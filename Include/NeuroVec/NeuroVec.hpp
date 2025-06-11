@@ -51,6 +51,20 @@ NeuroVec<T> mat2vecMul(const NeuroVec<NeuroVec<T>> &mat, const NeuroVec<T> &vec)
     return res;
 }
 
+template<typename T>
+NeuroVec<NeuroVec<T>> mat2matAdd(NeuroVec<NeuroVec<T>> mat1, NeuroVec<NeuroVec<T>> mat2)
+{
+    NeuroVec<NeuroVec<T>> res = CreateMatrix<T>(mat1.len, mat1[0].len, 0);
+    for(int i = 0; i < mat1.len; i++)
+    {
+        for(int j = 0; j < mat1[i].len; j++)
+        {
+            res[i][j] = mat1[i][j] + mat2[i][j];
+        }
+    }
+    return res;
+}
+
 template <typename T>
 NeuroVec<T> vec2matMul(const NeuroVec<T> &vec, const NeuroVec<NeuroVec<T>> &mat)
 {
