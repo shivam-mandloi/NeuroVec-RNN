@@ -68,7 +68,7 @@ int main()
     cout << "Training Start..." << endl;
     int batchSize = 32;
 
-    std::vector<NeuroVec<double>> data = ReadTxtFile(trainPath);
+    vector<NeuroVec<double>> data = ReadTxtFile(trainPath);
     vector<NeuroVec<NeuroVec<double>>> batchTrainingData = CreateMatrixGroup<double>(data, batchSize);
 
     vector<NeuroVec<double>> target = ReadTxtFile(trainTargetPath);
