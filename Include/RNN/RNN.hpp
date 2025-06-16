@@ -8,16 +8,18 @@ class RNN
 public:
     RNN(int _inputDim, int _outputDim, int _hiddenDim): block(_hiddenDim), liInput(_inputDim, _hiddenDim), liOutput(_hiddenDim, _outputDim)
     {
-        hiddenDim = hiddenDim;
+        hiddenDim = _hiddenDim;
     }
 
     std::vector<NeuroVec<NeuroVec<double>>> Forward(std::vector<NeuroVec<NeuroVec<double>>> &inputSeq)
     {
+        std::cout << "start RNN " << inputSeq[0].len << " " << hiddenDim << std::endl;
         NeuroVec<NeuroVec<double>> hidden = CreateMatrix<double>(inputSeq[0].len, hiddenDim, 0);
         std::vector<NeuroVec<NeuroVec<double>>> res;
         NeuroVec<NeuroVec<double>> output;
         for(int i = 0; i < inputSeq.size(); i++)
         {
+            std::cout << i << " In Rnn" << std::endl;
             output = liInput.Forward(inputSeq[i]);
             output = block.Forward(output, hidden);
             output = liOutput.Forward(output);

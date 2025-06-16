@@ -6,17 +6,27 @@
 class CrossEntropy
 {
 public:    
-    NeuroVec<double> Forward(NeuroVec<NeuroVec<double>> &predicted, NeuroVec<NeuroVec<double>> &groundTruth)
+    std::vector<NeuroVec<double>> Forward(std::vector<NeuroVec<NeuroVec<double>>> &predicted, std::vector<NeuroVec<NeuroVec<double>>> &groundTruth)
     {
-        prevInput = CopyMatrix<double>(predicted);
-        prevGroundTruth = CopyMatrix<double>(groundTruth);
-        return FindCrossLoss<double>(predicted, groundTruth);
+        std::vector<NeuroVec<double>> res;
+        for(int i = 0; i < predicted.size(); i++)
+        {
+            prevInput.push_back(CopyMatrix<double>(predicted[i]));
+            prevGroundTruth.push_back(CopyMatrix<double>(groundTruth[i]));
+            res.push_back(FindCrossLoss<double>(predicted[i], groundTruth[i]));
+        }
+        return res;
     }
 
-    NeuroVec<NeuroVec<double>> Backward()
+    std::vector<NeuroVec<NeuroVec<double>>> Backward()
     {
-        return CrossBackProp<double>(prevInput, prevGroundTruth);
+        std::vector<NeuroVec<NeuroVec<double>>> grad;
+        for(int i = 0; i < prevInput.size(); i++)
+        {
+            grad.push_back(CrossBackProp<double>(prevInput[i], prevGroundTruth[i]));
+        }
+        return grad;
     }
 private:
-    NeuroVec<NeuroVec<double>> prevInput, prevGroundTruth;
+    std::vector<NeuroVec<NeuroVec<double>>> prevInput, prevGroundTruth;
 };
