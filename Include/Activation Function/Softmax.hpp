@@ -16,13 +16,12 @@ public:
         {
             NeuroVec<NeuroVec<double>> copyInput = CopyMatrix<double>(input[i]);
             SoftmaxCalculate(copyInput);
-            res.push_back(copyInput);
-            savedProb.push_back(CopyMatrix<double>(copyInput));
+            res.push_back(copyInput);            
         }
         return res;
     }
 
-    std::vector<NeuroVec<NeuroVec<double>>> Backward(std::vector<NeuroVec<NeuroVec<double>>> &prevGrad)
+    std::vector<NeuroVec<NeuroVec<double>>> Backward(std::vector<NeuroVec<NeuroVec<double>>> &prevGrad, std::vector<NeuroVec<NeuroVec<double>>> &savedProb)
     {
         std::vector<NeuroVec<NeuroVec<double>>> grad;
         for(int i = 0; i < prevGrad.size(); i++)
@@ -32,6 +31,5 @@ public:
         return grad;
     }
 
-private:
-    std::vector<NeuroVec<NeuroVec<double>>> savedProb;
+
 };

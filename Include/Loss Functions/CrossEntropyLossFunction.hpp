@@ -11,14 +11,12 @@ public:
         std::vector<NeuroVec<double>> res;
         for(int i = 0; i < predicted.size(); i++)
         {
-            prevInput.push_back(CopyMatrix<double>(predicted[i]));
-            prevGroundTruth.push_back(CopyMatrix<double>(groundTruth[i]));
             res.push_back(FindCrossLoss<double>(predicted[i], groundTruth[i]));
         }
         return res;
     }
 
-    std::vector<NeuroVec<NeuroVec<double>>> Backward()
+    std::vector<NeuroVec<NeuroVec<double>>> Backward(std::vector<NeuroVec<NeuroVec<double>>> &prevInput, std::vector<NeuroVec<NeuroVec<double>>> &prevGroundTruth)
     {
         std::vector<NeuroVec<NeuroVec<double>>> grad;
         for(int i = 0; i < prevInput.size(); i++)
@@ -27,6 +25,5 @@ public:
         }
         return grad;
     }
-private:
-    std::vector<NeuroVec<NeuroVec<double>>> prevInput, prevGroundTruth;
+
 };

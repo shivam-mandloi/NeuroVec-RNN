@@ -13,13 +13,11 @@ public:
 
     std::vector<NeuroVec<NeuroVec<double>>> Forward(std::vector<NeuroVec<NeuroVec<double>>> &inputSeq)
     {
-        std::cout << "start RNN " << inputSeq[0].len << " " << hiddenDim << std::endl;
         NeuroVec<NeuroVec<double>> hidden = CreateMatrix<double>(inputSeq[0].len, hiddenDim, 0);
         std::vector<NeuroVec<NeuroVec<double>>> res;
         NeuroVec<NeuroVec<double>> output;
-        for(int i = 0; i < inputSeq.size(); i++)
+        for(int i = 0; i < inputSeq.size() - 1; i++)
         {
-            std::cout << i << " In Rnn" << std::endl;
             output = liInput.Forward(inputSeq[i]);
             output = block.Forward(output, hidden);
             output = liOutput.Forward(output);
@@ -28,15 +26,15 @@ public:
         return res;
     }
 
-    NeuroVec<NeuroVec<double>> Backward(std::vector<NeuroVec<NeuroVec<double>>> lossGrad)
+    void Backward(std::vector<NeuroVec<NeuroVec<double>>> &lossGrad)
     {
         NeuroVec<NeuroVec<double>> hiddenGrad = CreateMatrix<double>(lossGrad[0].len, hiddenDim, 0);
-        for(int i = lossGrad.size() - 1; i > -1; i++)
-        {
-            NeuroVec<NeuroVec<double>> dldht = liInput.Backward(lossGrad[i]);
+        for(int i = lossGrad.size() - 1; i > -1; i--)
+        {            
+            NeuroVec<NeuroVec<double>> dldht = liOutput.Backward(lossGrad[i]);
             dldht = block.Backward(dldht, hiddenGrad);
-            liOutput.Backward(dldht);
-        }
+            liInput.Backward(dldht);
+        }        
     }
 
 private:

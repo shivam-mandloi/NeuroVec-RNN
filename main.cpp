@@ -64,7 +64,7 @@ public:
         {
             if(index+j >= data.size())
                 break;
-            vector<string> temp = split(data[index + j], ' ');  
+            vector<string> temp = split(data[index + j], ' ');
             if(temp.size() > maxEle)
                 maxEle = temp.size();
             sentences.push_back(temp);
@@ -85,26 +85,17 @@ public:
     void Train(int batch)
     {   
         int count = 0;
-        cout << "start debuging" << endl;
         for(int epoch = 0; epoch < 1; epoch++)
-        {
-            cout << epoch << endl;
+        {            
             while(data.size() > count)
             {
-                cout << "first" << endl;
                 vector<NeuroVec<NeuroVec<double>>> dataBatched = CreateGroupData(count, batch);
                 vector<NeuroVec<NeuroVec<double>>> target = CreateTarget(dataBatched);
-
-                cout << "sec" << endl;
+                                
                 // Forward Prapogation
                 vector<NeuroVec<NeuroVec<double>>> output = rnn.Forward(dataBatched);
-                cout << "Run RNN" << endl;
-                vector<NeuroVec<NeuroVec<double>>> prob = sf.Forward(output);
-
-                // Loss
-                cout << "softmax " << prob << endl;
+                vector<NeuroVec<NeuroVec<double>>> prob = sf.Forward(output);                
                 vector<NeuroVec<double>> loss = crLoss.Forward(prob, target);
-                cout << "softmax End" << endl;
                 int totalLoss = 0;
                 for(int i = 0; i < loss.size(); i++)
                 {
@@ -113,13 +104,12 @@ public:
                         totalLoss += loss[i][j];
                     }
                 }
-                cout << "Epoch: " << epoch + 1 << "Loss: " << totalLoss << endl;
+                cout << "Epoch: " << epoch + 1 << " Loss: " << totalLoss << " Batch: " << count << "|" << data.size() << endl;
                 
                 // BackWord Prapogation
-                vector<NeuroVec<NeuroVec<double>>> grad = crLoss.Backward();
-                sf.Backward(grad);
-
-                cout << count << endl;
+                vector<NeuroVec<NeuroVec<double>>> grad = crLoss.Backward(prob, target);
+                grad = sf.Backward(grad, prob);
+                rnn.Backward(grad);
                 count += batch;
             }
         }
@@ -156,7 +146,7 @@ public:
         }
 
         data = res;
-        int count = 1;
+        int count = 0;
         for(int i = 0; i < data.size(); i++)
         {
             vector<string> spliteSent = split(data[i], ' ');
@@ -194,9 +184,9 @@ private:
 int main()
 {
     // 42405
-    NextWordPrediction model(42405, 42405);
+    NextWordPrediction model(20016, 20016);
     
-    model.MakeData("C:\\Users\\shiva\\Desktop\\IISC\\code\\NeuroCpp\\NeuroVec-RNN\\dataset\\poem.txt");
+    model.MakeData("C:\\Users\\shiva\\Desktop\\IISC\\code\\NeuroCpp\\NeuroVec-RNN\\dataset\\poem.txt");    
     cout << "start Training..." << endl;
     model.Train(32);
     return 0;
