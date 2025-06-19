@@ -17,17 +17,16 @@ public:
     NeuroVec<NeuroVec<double>> Forward(NeuroVec<NeuroVec<double>> &input)
     {
         NeuroVec<NeuroVec<double>> output = LinearF(input, weight, bias);
-        saveInput = CopyMatrix<double>(input);
+        // saveInput = CopyMatrix<double>(input);
         return output;
     }
 
-    NeuroVec<NeuroVec<double>> Backward(NeuroVec<NeuroVec<double>> &prevGrad)
+    NeuroVec<NeuroVec<double>> Backward(NeuroVec<NeuroVec<double>> &prevGrad, NeuroVec<NeuroVec<double>> &saveInput)
     {
         return LinearBAndUpdate(saveInput, prevGrad, weight, bias, adam);
     }
 private:
     NeuroVec<NeuroVec<double>> weight;
     NeuroVec<double> bias;
-    NeuroVec<NeuroVec<double>> saveInput;
     Adam adam;
 };
