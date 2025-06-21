@@ -1,4 +1,8 @@
 #include "NeuroVec.hpp"
+#include "Linear.hpp"
+#include "RNN.hpp"
+#include "Softmax.hpp"
+#include "CrossEntropyLossFunction.hpp"
 
 #include <vector>
 #include <utility>
@@ -11,12 +15,12 @@ vector<string> split(string str, char split)
 {
     string temp = "";
     vector<string> res;
-    for(int i = 0; i < str.size(); i++)
-    {        
-        if(split == str[i])
+    for (int i = 0; i < str.size(); i++)
+    {
+        if (split == str[i])
         {
             // cout << temp << endl;
-            if(temp == "")
+            if (temp == "")
                 continue;
             res.push_back(temp);
             temp = "";
@@ -24,18 +28,19 @@ vector<string> split(string str, char split)
         }
         temp += str[i];
     }
-    if(temp != "")
+    if (temp != "")
         res.push_back(temp);
     return res;
 }
 
 // Extract poem and word vector
-pair<vector<string>, unordered_map<string, NeuroVec<double>>> MakeData(string pathData, string wordPath)
+pair<vector<vector<string>>, unordered_map<string, int>> MakeData(string pathData)
 {
     fstream newFile, wordFile;
     string temp;
-    vector<string> res;
-    
+    vector<vector<string>> res;
+    unordered_map<string, int> wordIndex;
+
     newFile.open(pathData, ios::in);
     if (!newFile.is_open())
     {
@@ -43,11 +48,23 @@ pair<vector<string>, unordered_map<string, NeuroVec<double>>> MakeData(string pa
         exit(0);
     }
     string addString = "";
+    int count = 0;
+
     while (getline(newFile, temp))
     {
-        if(temp == "||")
+        if (temp == "||")
         {
-            res.push_back(addString);
+            vector<string> tempSplitedPoem = split(addString, ' ');
+            res.push_back(tempSplitedPoem);
+
+            for (int i = 0; i < tempSplitedPoem.size(); i++)
+            {
+                if (wordIndex.find(tempSplitedPoem[i]) == wordIndex.end())
+                {
+                    wordIndex[tempSplitedPoem[i]] = count;
+                    count += 1;
+                }
+            }
             addString = "";
             continue;
         }
@@ -55,60 +72,139 @@ pair<vector<string>, unordered_map<string, NeuroVec<double>>> MakeData(string pa
             addString += (temp + " + ");
     }
 
-
-    wordFile.open(wordPath, ios::in);
-    if (!wordFile.is_open())
-    {
-        std::cerr << "Error: Could not open file " << pathData << std::endl;
-        exit(0);
-    }
-    unordered_map<string, NeuroVec<double>> wordEmb;
- 
-    while (getline(wordFile, temp))
-    {
-        vector<string> emb = split(temp, ' ');
-        if(wordEmb.find(emb[0]) == wordEmb.end())
-        {            
-            wordEmb[emb[0]] = CreateVector<double>(emb.size() - 1, 0);
-            for(int i = 1; i < emb.size(); i++)
-            {
-                wordEmb[emb[0]][i - 1] = std::stod(emb[i]);                
-            }
-        }
-    }
-        
-    pair<vector<string>, unordered_map<string, NeuroVec<double>>> returnData;
+    pair<vector<vector<string>>, unordered_map<string, int>> returnData;
     returnData.first = res;
-    returnData.second = wordEmb;
+    returnData.second = wordIndex;
     return returnData;
 }
 
 class PoemPredict
 {
 public:
-    PoemPredict(vector<string> _poemData, unordered_map<string, NeuroVec<double>> _wordEmb): poemData(_poemData), wordEmb(_wordEmb)
-    {}
-
-    void Train()
+    PoemPredict(vector<vector<string>> &_poemData, unordered_map<string, int> &_wordEmb, int _batchSize = 32, int _hiddenDim = 300) 
+    : poemData(_poemData), wordEmb(_wordEmb), batchSize(_batchSize), hiddenDim(_hiddenDim), inLinear(_wordEmb.size(), _hiddenDim), outLinear(_hiddenDim, wordEmb.size()), rnn(hiddenDim)
     {
+        inputDim = wordEmb.size();
+    }
 
+    vector<NeuroVec<NeuroVec<double>>> CreateSeq(int index)
+    {
+        int maxDim = 0;
+        for (int i = index; i < index + batchSize; i++)
+        {
+            if (poemData.size() <= i)
+                    break;
+            if (maxDim < poemData[i].size())
+                maxDim = poemData[i].size();
+        }
+
+        NeuroVec<NeuroVec<double>> res;
+        vector<NeuroVec<NeuroVec<double>>> resSeq;
+        for (int i = 0; i < maxDim; i++)
+        {
+            res = CreateMatrix<double>(batchSize, inputDim, 0);
+            for (int j = 0; j < batchSize; j++)
+            {
+                if (poemData.size() <= index + j)
+                    break;
+                if (i >= poemData[index + j].size())
+                    res[j][wordEmb["+"]] = 1;
+                else
+                    res[j][wordEmb[poemData[index + j][i]]] = 1;
+            }
+            resSeq.push_back(res);
+        }
+        return resSeq;
+    }
+
+    vector<NeuroVec<NeuroVec<double>>> CreateTarget(vector<NeuroVec<NeuroVec<double>>> &input)
+    {
+        vector<NeuroVec<NeuroVec<double>>> res;
+        for(int i = 1; i < input.size(); i++)
+        {
+            res.push_back(CopyMatrix<double>(input[i]));
+        }
+        return res;
+    }
+
+    void Train(int epoch = 10)
+    {
+        for (int epc = 0; epc < epoch; epc++)
+        {
+            for (int i = 0; i < poemData.size(); i += batchSize)
+            {
+                // Forward prapogation
+                vector<NeuroVec<NeuroVec<double>>> seqInput = CreateSeq(i);
+                vector<NeuroVec<NeuroVec<double>>> seqInRnn, seqOut;
+                for(int j = 0; j < seqInput.size(); j++)
+                {
+                    seqInRnn.push_back(inLinear.Forward(seqInput[j]));
+                }
+
+                seqInRnn = rnn.Forward(seqInRnn); // rnn
+
+                for(int j = 0; j < seqInRnn.size(); j++) // output linear and softmax
+                {
+                    NeuroVec<NeuroVec<double>> temp = outLinear.Forward(seqInRnn[j]);
+                    seqOut.push_back(sf.Forward(temp));
+                }
+
+                // Target and Loss
+                vector<NeuroVec<NeuroVec<double>>> target = CreateTarget(seqInput);
+                vector<NeuroVec<double>> crLoss;
+                for(int k = 0; k < target.size(); k++)
+                {
+                    crLoss.push_back(cr.Forward(seqOut[k], target[k]));
+                }
+
+                double totalLoss = 0;
+                for(int k = 0; k < crLoss.size(); k++)
+                {
+                    for(int ele = 0; ele < crLoss[k].len; ele++)
+                    {
+                        totalLoss += crLoss[k][ele];
+                    }
+                }
+
+                cout << "Epoch: " << epc + 1 << " | Batch: " << i << " - " << (i + batchSize - 1) << "| Loss: " << totalLoss << endl;
+
+                // Baclword prapogation
+                cout << "Start Back Prapogation" << endl;
+                vector<NeuroVec<NeuroVec<double>>> prevGrad;
+                for(int k = 0; k < target.size(); k++)
+                {
+                   NeuroVec<NeuroVec<double>> temp = cr.Backward(seqOut[k], target[k]);
+                   temp = sf.Backward(temp, seqOut[k]);
+                   prevGrad.push_back(outLinear.Backward(temp, seqInRnn[k]));
+                }
+                prevGrad = rnn.Backward(prevGrad);
+
+                for(int k = 0; k < prevGrad.size(); k++)
+                {
+                    inLinear.Backward(prevGrad[k], seqInput[k]);
+                }
+                cout << "Complete Back Prapogation" << endl;
+            }
+        }
     }
 
 private:
-    vector<string> poemData;
-    unordered_map<string, NeuroVec<double>> wordEmb;
+    vector<vector<string>> poemData;
+    unordered_map<string, int> wordEmb;
+    int batchSize, hiddenDim, inputDim;
+    Linear inLinear, outLinear;
+    RNN rnn;
+    Sofmax sf;
+    CrossEntropy cr;
 };
-
-PoemPredict CreateModel(string path)
-{
-
-}
 
 int main()
 {
-    pair<vector<string>, unordered_map<string, NeuroVec<double>>> data = MakeData("c:\\Users\\shiva\\Desktop\\IISC\\code\\NeuroCpp\\NeuroVec-RNN\\glove.6B\\poem.txt", "C:\\Users\\shiva\\Desktop\\IISC\\code\\NeuroCpp\\NeuroVec-RNN\\glove.6B\\GetRelatedData.txt");    
-    cout << data.first.size() << endl;
-    Print<double>(data.second["the"]);
+    pair<vector<vector<string>>, unordered_map<string, int>> data = MakeData("c:\\Users\\shiva\\Desktop\\IISC\\code\\NeuroCpp\\NeuroVec-RNN\\glove.6B\\temp.txt");
     PoemPredict model(data.first, data.second);
+
+    cout << "Total Poem: " << data.first.size() << " Total Vocab: " << data.second.size() << endl;
+    cout << "Start Training...." << endl;
+    model.Train();
     return 0;
 }

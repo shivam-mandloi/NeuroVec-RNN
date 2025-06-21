@@ -19,7 +19,7 @@ public:
 
         for(int i = 0; i < inputSeq.size() - 1; i++)
         {
-            output = block.Forward(output, hidden);
+            output = block.Forward(inputSeq[i], hidden);
             res.push_back(output);
         }
         return res;

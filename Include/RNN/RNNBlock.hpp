@@ -14,10 +14,12 @@ public:
     {        
         wInput.push_back(input);
         NeuroVec<NeuroVec<double>> output = W.Forward(input);
+        
         uInput.push_back(hidden);
         hidden = U.Forward(hidden);
 
         hidden = mat2matAdd<double>(output, hidden);
+        
         rlInput.push_back(hidden);
         hidden = rl.Forward(hidden);
 
